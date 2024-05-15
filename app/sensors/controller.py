@@ -76,80 +76,67 @@ def search_sensors(query: str, size: int = 10, search_type: str = "match", db: S
     #return repository.search_sensors(db=db, mongodb=mongodb_client, query=query, size=size, search_type=search_type)
     return []
 
+@router.get("/temperature/values")
+def get_temperature_values(mongodb: Session = Depends(get_mongodb_client), cassandra_client: CassandraClient = Depends(get_cassandra_client)):
+    return repository.get_temperature_values(mongodb=mongodb, cassandra=cassandra_client)
+
+@router.get("/quantity_by_type")
+def get_sensors_quantity(db: Session = Depends(get_db), cassandra_client: CassandraClient = Depends(get_cassandra_client)):
+    return repository.get_sensors_quantity(db=db, cassandra_client=cassandra_client)
+
+@router.get("/low_battery")
+def get_low_battery_sensors(mongodb: Session = Depends(get_mongodb_client), cassandra_client: CassandraClient = Depends(get_cassandra_client)):
+    return repository.get_low_battery_sensors(mongodb=mongodb, cassandra=cassandra_client)
+
+# 🙋🏽‍♀️ Add here the route to get all sensors
 @router.get("")
 def get_sensors(db: Session = Depends(get_db)):
     return repository.get_sensors(db)
 
-
 # 🙋🏽‍♀️ Add here the route to create a sensor
 @router.post("")
-def create_sensor(sensor: schemas.SensorCreate, db: Session = Depends(get_db), mongodb_client: MongoDBClient = Depends(get_mongodb_client)):
-    #The creation of the sensor should be sync (without queue)
+def create_sensor(sensor: schemas.SensorCreate, db: Session = Depends(get_db), mongodb_client: MongoDBClient = Depends(get_mongodb_client),elastic_client: ElasticsearchClient=Depends(get_elastic_search), cassandra: CassandraClient=Depends(get_cassandra_client)):
     db_sensor = repository.get_sensor_by_name(db, sensor.name)
     if db_sensor:
-        raise HTTPException(
-            status_code=400, detail="Sensor with same name already registered")
-    sensor_created = repository.create_sensor(db, mongodb_client, sensor)
-    return sensor_created
+        raise HTTPException(status_code=400, detail="Sensor with same name already registered")
+    return repository.create_sensor(db=db, sensor=sensor,mongodb=mongodb_client, elastic=elastic_client, cassandra=cassandra)
 
 
+# 🙋🏽‍♀️ Add here the route to get a sensor by id
 @router.get("/{sensor_id}")
 def get_sensor(sensor_id: int, db: Session = Depends(get_db), mongodb_client: MongoDBClient = Depends(get_mongodb_client)):
-    db_sensor = repository.get_sensor(db, sensor_id)
+    db_sensor = repository.get_sensor(mongodb_client, sensor_id)
     if db_sensor is None:
         raise HTTPException(status_code=404, detail="Sensor not found")
     return db_sensor
 
 # 🙋🏽‍♀️ Add here the route to delete a sensor
 @router.delete("/{sensor_id}")
-def delete_sensor(sensor_id: int, db: Session = Depends(get_db), mongodb_client: MongoDBClient = Depends(get_mongodb_client)):
-    db_sensor = repository.get_sensor(db, sensor_id)
+def delete_sensor(sensor_id: int, db: Session = Depends(get_db), mongodb_client: MongoDBClient = Depends(get_mongodb_client),timescale: Timescale = Depends(get_timescale), redis: RedisClient = Depends(get_redis_client)):
+    db_sensor = repository.get_sensor(mongodb_client, sensor_id)
     if db_sensor is None:
         raise HTTPException(status_code=404, detail="Sensor not found")
-    return repository.delete_sensor(db=db, sensor_id=sensor_id)
+    
+    return repository.delete_sensor(db=db, sensor_id=sensor_id, mongodb=mongodb_client, redis=redis, timescale=timescale)
 
 # 🙋🏽‍♀️ Add here the route to update a sensor
-
-
 @router.post("/{sensor_id}/data")
-def record_data(sensor_id: int, data: schemas.SensorData, db: Session = Depends(get_db), timescale: Timescale = Depends(get_timescale), redis_client: RedisClient = Depends(get_redis_client)):
-    db_sensor = repository.get_sensor(db, sensor_id)
+def record_data(sensor_id: int, data: schemas.SensorData,db: Session = Depends(get_db) ,redis_client: RedisClient = Depends(get_redis_client), timescale: Timescale = Depends(get_timescale),mongodb_client: MongoDBClient = Depends(get_mongodb_client), cassandra_client = Depends(get_cassandra_client)):
+    db_sensor = repository.get_sensor(mongodb_client, sensor_id=sensor_id)
     if db_sensor is None:
         raise HTTPException(status_code=404, detail="Sensor not found")
-
-    # We need to retrieve the query params from, to and bucket from the request
-    # Publish here the data to the queue
-    new_var = repository.record_data(
-        redis=redis_client, timescale=timescale, sensor_id=sensor_id, data=data)
-    return new_var
+    return repository.record_data(redis=redis_client, sensor_id=sensor_id, data=data, ts=timescale, cassandra=cassandra_client)
 
 # 🙋🏽‍♀️ Add here the route to get data from a sensor
 @router.get("/{sensor_id}/data")
-def get_data(
-        sensor_id: int,
-        r: Request,
-        db: Session = Depends(get_db),
-        redis_client: RedisClient = Depends(get_redis_client),
-        timescale: Timescale = Depends(get_timescale)):
-
-    db_sensor = repository.get_sensor(db, sensor_id)
-    if db_sensor is None:
+def get_data(sensor_id: int, request: Request, db: Session = Depends(get_db) ,redis_client: RedisClient = Depends(get_redis_client), timescale: Timescale = Depends(get_timescale),  mongodb_client: MongoDBClient = Depends(get_mongodb_client)):    
+    db_sensor = repository.get_sensor(db=db, sensor_id=sensor_id)
+    
+    if db_sensor is None: 
         raise HTTPException(status_code=404, detail="Sensor not found")
+    
+    from_ = request.query_params['from']
+    to = request.query_params["to"]
+    bucket = request.query_params["bucket"]
 
-    # Get the from, to and bucket from the request
-    datacommand = DataCommand(
-        r.query_params['from'], r.query_params['to'], r.query_params['bucket'])
-    return repository.get_data(timescale=timescale, sensor_id=sensor_id, dataCommand=datacommand)
-
-
-class ExamplePayload():
-    def __init__(self, example):
-        self.example = example
-
-    def to_json(self):
-        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
-@router.post("/exemple/queue")
-def exemple_queue():
-    # Publish here the data to the queue
-    publisher.publish(ExamplePayload("holaaaaa"))
-    return {"message": "Data published to the queue"}
+    return repository.get_data(redis=redis_client, sensor_id=sensor_id, db=db, ts=timescale, from_=from_, to=to, bucket=bucket)

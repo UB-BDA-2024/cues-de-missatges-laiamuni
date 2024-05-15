@@ -5,6 +5,9 @@ from datetime import datetime
 
 from shared.mongodb_client import MongoDBClient
 from shared.redis_client import RedisClient
+from shared.cassandra_client import CassandraClient
+from shared.timescale import Timescale
+from shared.elasticsearch_client import ElasticsearchClient
 from shared.sensors import models, schemas
 from shared.timescale import Timescale
 
@@ -23,27 +26,11 @@ class DataCommand():
 def get_sensor(db: Session, sensor_id: int) -> Optional[models.Sensor]:
     return db.query(models.Sensor).filter(models.Sensor.id == sensor_id).first()
 
-
 def get_sensor_by_name(db: Session, name: str) -> Optional[models.Sensor]:
     return db.query(models.Sensor).filter(models.Sensor.name == name).first()
 
 def get_sensors(db: Session, skip: int = 0, limit: int = 100) -> List[models.Sensor]:
     return db.query(models.Sensor).offset(skip).limit(limit).all()
-
-
-def create_sensor(db: Session, mongodb_clinet: MongoDBClient, sensor: schemas.SensorCreate) -> models.Sensor:
-    # Add sensor to postgres database
-    db_sensor = add_sensor_to_postgres(db, sensor)
-
-    # Add sensor to mongodb database
-    mongo_sensor = add_sensor_to_mongodb(mongodb_clinet, sensor, db_sensor.id)
-
-    del mongo_sensor['location']
-    mongo_sensor['latitude'] = sensor.latitude
-    mongo_sensor['longitude'] = sensor.longitude
-
-    return mongo_sensor
-
 
 def add_sensor_to_postgres(db: Session, sensor: schemas.SensorCreate) -> models.Sensor:
     date = datetime.now()
@@ -54,7 +41,6 @@ def add_sensor_to_postgres(db: Session, sensor: schemas.SensorCreate) -> models.
     db.refresh(db_sensor)
 
     return db_sensor
-
 
 def add_sensor_to_mongodb(mongodb_client: MongoDBClient, db_sensor: schemas.SensorCreate, id):
     mongo_projection = schemas.SensorMongoProjection(id=id, name=db_sensor.name, location={'type': 'Point',
@@ -71,25 +57,6 @@ def add_sensor_to_mongodb(mongodb_client: MongoDBClient, db_sensor: schemas.Sens
     mongodb_client.getCollection().insert_one(mongoInsert)
     return mongo_projection.dict()
 
-
-def record_data(redis: RedisClient, timescale: Timescale, sensor_id: int, data: schemas.SensorData) -> schemas.Sensor:
-    # We store the recieved data as a JSON string in Redis
-    redis.set(sensor_id, data.json())
-
-    # We set the data to the timescale database
-    data_to_insert = data.dict()
-    data_to_insert['sensor_id'] = sensor_id
-    data_to_insert['time'] = data_to_insert['last_seen']
-    del data_to_insert['last_seen']
-
-    query = timescale.generate_insert_query('sensor_data', data_to_insert)
-    print(query)
-    var = timescale.execute(query)
-    print(var)
-
-    return data
-
-
 def getView(bucket: str) -> str:
     if bucket == 'year':
         return 'sensor_data_yearly'
@@ -104,15 +71,6 @@ def getView(bucket: str) -> str:
     else:
         raise ValueError("Invalid bucket size")
 
-
-def get_data(timescale: Timescale, sensor_id: int, dataCommand: DataCommand) -> schemas.Sensor:
-    # We need to get the bucket to know wich view query on timescale
-    view = getView(dataCommand.bucket)
-    query = f"SELECT * FROM {view} WHERE sensor_id = {sensor_id} AND bucket >= '{dataCommand.from_time}' AND bucket <= '{dataCommand.to_time}'"
-    data = timescale.execute(query, True)
-    return data
-
-
 def delete_sensor(db: Session, sensor_id: int):
     db_sensor = db.query(models.Sensor).filter(models.Sensor.id == sensor_id).first()
     if db_sensor is None:
@@ -120,3 +78,151 @@ def delete_sensor(db: Session, sensor_id: int):
     db.delete(db_sensor)
     db.commit()
     return db_sensor
+
+def get_sensor(mongodb: MongoDBClient, sensor_id: int) -> Optional[models.Sensor]:
+    sensor = mongodb.get_sensor({"id": sensor_id})
+    return sensor
+
+def create_sensor(db: Session, sensor: schemas.SensorCreate, mongodb: MongoDBClient, elastic: ElasticsearchClient, cassandra: CassandraClient) -> Optional[models.Sensor]:
+    db_sensor = models.Sensor(name=sensor.name)
+    db.add(db_sensor)
+    db.commit()
+    db.refresh(db_sensor)
+    sensor2 = {
+        "id": db_sensor.id,
+        "name": sensor.name,
+        "latitude": sensor.latitude,
+        "longitude": sensor.longitude,
+        "type":sensor.type,
+        "mac_address":sensor.mac_address,
+        "manufacturer":sensor.manufacturer,
+        "serie_number":sensor.serie_number,
+        "model":sensor.model,
+        "firmware_version":sensor.firmware_version,
+        "description":sensor.description
+    }
+
+    return_value = mongodb.set_sensor(sensor2)
+
+    document_to_index = {
+         "name": sensor2["name"],
+         "type": sensor2["type"],
+         "description": sensor2["description"]
+     }
+    
+    elastic.index_document(index_name="sensors", document=document_to_index)
+    
+    query = f"INSERT INTO sensor.quantity(sensor_id, sensor_type) VALUES ({db_sensor.id}, '{sensor.type}');"
+    cassandra.execute(query)
+
+    sensor_info = mongodb.get_sensor({"id":db_sensor.id})
+    return sensor_info
+
+def record_data(redis: RedisClient, sensor_id: int, data: schemas.SensorData, ts: Timescale, cassandra: CassandraClient) -> schemas.Sensor:
+    db_sensordata = {
+        "velocity": data.velocity,
+        "temperature": data.temperature,
+        "humidity": data.humidity,
+        "battery_level": data.battery_level,
+        "last_seen": data.last_seen
+    }
+    
+    ts_data = {key: value if value is not None else 'NULL' for key, value in db_sensordata.items()}
+    ts_data['last_seen'] = f"'{ts_data['last_seen']}'"
+
+    query = f"""INSERT INTO sensor_data (sensor_id, temperature, humidity, velocity, battery_level, last_seen) 
+            VALUES ({sensor_id}, {ts_data['temperature']}, {ts_data['humidity']}, {ts_data['velocity']}, {ts_data['battery_level']}, {ts_data['last_seen']})
+            ON CONFLICT (sensor_id, last_seen) DO UPDATE SET temperature = EXCLUDED.temperature, humidity=EXCLUDED.humidity, velocity=EXCLUDED.velocity, battery_level=EXCLUDED.battery_level;"""
+
+    ts.execute(query)
+    ts.execute("commit")
+
+    if data.temperature is not None:
+        cassandra.execute("INSERT INTO sensor.temp_values (sensor_id, temp) VALUES (" + str(sensor_id) + ", " + str(data.temperature) + ");")
+    
+    cassandra.execute("INSERT INTO sensor.low_bat (sensor_id, battery) VALUES (" + str(sensor_id) + ", " + str(data.battery_level) + ");")
+
+    redis.set(sensor_id, db_sensordata)
+
+
+    return data
+
+def get_data(redis: RedisClient, sensor_id: int,  db: Session, ts: Timescale, from_: str, to: str, bucket: str) -> schemas.Sensor:
+    if from_ is not None and to is not None and bucket is not None:
+        query = f"""
+            SELECT 
+                sensor_id,
+                time_bucket('1 {bucket}', last_seen) AS {bucket},
+                AVG(velocity) AS velocity,
+                AVG(temperature) AS temperature,
+                AVG(humidity) AS humidity
+            FROM sensor_data
+            WHERE sensor_id = {sensor_id} AND last_seen >= '{from_}' AND last_seen <= '{to}'
+            GROUP BY sensor_id, {bucket};
+        """
+        
+        ts.execute(query)
+        result = ts.cursor.fetchall()
+
+        return result
+
+    else:
+        db_sensordata = redis.get(sensor_id)
+
+        if db_sensordata is None:
+            raise HTTPException(status_code=404, detail="Sensor not found")
+        
+        db_sensordata["id"] = sensor_id
+        db_sensordata["name"] = db.query(models.Sensor).filter(models.Sensor.id == sensor_id).first().name
+    
+        return db_sensordata
+
+def delete_sensor(db: Session, sensor_id: int, mongodb: MongoDBClient, redis: RedisClient, ts: Timescale):
+    db_sensor = db.query(models.Sensor).filter(models.Sensor.id == sensor_id).first()
+    if db_sensor is None:
+        raise HTTPException(status_code=404, detail="Sensor not found")
+    db.delete(db_sensor)
+    db.commit()
+
+    query_delete = {"id": sensor_id}
+    mongodb.delete_sensor(query_delete)
+
+    redis.delete(sensor_id)
+
+    query = "DELETE FROM sensor_data WHERE sensor_id == " + str(sensor_id)
+    ts.execute(query)
+    return db_sensor
+
+def get_temperature_values(mongodb: MongoDBClient, cassandra: CassandraClient):
+    db_sensor = cassandra.execute("SELECT sensor_id, MAX(temp) as max_temp, MIN(temp) as min_temp, AVG(temp) as avg_temp FROM sensor.temp_values GROUP BY sensor_id;")
+    
+    sensors = []
+    for row in db_sensor:
+        sensor_id = row.sensor_id
+        data_sensor = get_sensor(mongodb, sensor_id)
+        data_sensor["values"] = {"max_temperature": row.max_temp, "min_temperature": row.min_temp, "average_temperature": row.avg_temp}
+        sensors.append(data_sensor)
+    
+    return {"sensors": sensors}
+
+def get_sensors_quantity(db: Session, cassandra_client: CassandraClient):
+    db_sensor = cassandra_client.execute("SELECT sensor_type, COUNT(*) FROM sensor.quantity GROUP BY sensor_type;")
+    
+    sensors = list()
+    for row in db_sensor:
+        type_dict = {"type":row.sensor_type, "quantity": row.count}
+        sensors.append(type_dict)
+    
+    return {"sensors": sensors}
+
+def get_low_battery_sensors(mongodb: MongoDBClient, cassandra: CassandraClient):
+    db_sensor = cassandra.execute("SELECT * FROM sensor.low_bat WHERE battery <= 0.2 ALLOW FILTERING;")
+
+    sensors = list()
+    for row in db_sensor:
+        sensor_id = row.sensor_id
+        data_sensor = get_sensor(mongodb, sensor_id)
+        data_sensor.update({"battery_level": round(row.battery, 2)})
+        sensors.append(data_sensor)
+
+    return {"sensors": sensors}

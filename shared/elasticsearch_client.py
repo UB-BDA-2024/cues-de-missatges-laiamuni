@@ -1,10 +1,26 @@
 from elasticsearch import Elasticsearch
+import time
 
 class ElasticsearchClient:
     def __init__(self, host="localhost", port="9200"):
         self.host = host
         self.port = port
         self.client = Elasticsearch(["http://"+self.host+":"+self.port])
+
+        while not self.ping():
+            print("Waiting for Elasticsearch to start...")
+            time.sleep(1)
+
+        if not self.client.indices.exists(index="sensors"):
+            self.create_index(index_name="sensors")
+            mapping = {
+                "properties":{
+                    "name":{"type":"keyword"},
+                    "type":{"type":"keyword"},
+                    "description":{"type":"text"}
+                }
+            }
+            self.create_mapping(index_name="sensors",mapping=mapping)
 
     def ping(self):
         return self.client.ping()
