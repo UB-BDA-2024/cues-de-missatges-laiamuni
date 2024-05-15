@@ -78,7 +78,6 @@ def test_post_sensor_data_temperatura_4():
     response = client.post("/sensors/4/data", json={"temperature": 17.0, "humidity": 1.0, "battery_level": 1.0, "last_seen": "2020-01-02T00:00:00.000Z"})
     assert response.status_code == 200
 
-
 def test_post_sensor_data_veolicitat_1():
     response = client.post("/sensors/2/data", json={"velocity": 1.0, "battery_level": 0.1, "last_seen": "2020-01-01T00:00:00.000Z"})
     assert response.status_code == 200
