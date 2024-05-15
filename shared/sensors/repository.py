@@ -127,9 +127,12 @@ def record_data(redis: RedisClient, sensor_id: int, data: schemas.SensorData, ts
     ts_data = {key: value if value is not None else 'NULL' for key, value in db_sensordata.items()}
     ts_data['last_seen'] = f"'{ts_data['last_seen']}'"
 
-    query = f"""INSERT INTO sensor_data (sensor_id, temperature, humidity, velocity, battery_level, last_seen) 
-            VALUES ({sensor_id}, {ts_data['temperature']}, {ts_data['humidity']}, {ts_data['velocity']}, {ts_data['battery_level']}, {ts_data['last_seen']})
-            ON CONFLICT (sensor_id, last_seen) DO UPDATE SET temperature = EXCLUDED.temperature, humidity=EXCLUDED.humidity, velocity=EXCLUDED.velocity, battery_level=EXCLUDED.battery_level;"""
+    query = f"INSERT INTO sensor_data (sensor_id, temperature, humidity, velocity, battery_level, last_seen) VALUES ({sensor_id}, {ts_data['temperature']}, {ts_data['humidity']}, {ts_data['velocity']}, {ts_data['battery_level']}, {ts_data['last_seen']});"
+
+
+    # query = f"""INSERT INTO sensor_data (sensor_id, temperature, humidity, velocity, battery_level, last_seen) 
+    #         VALUES ({sensor_id}, {ts_data['temperature']}, {ts_data['humidity']}, {ts_data['velocity']}, {ts_data['battery_level']}, {ts_data['last_seen']})
+    #         ON CONFLICT (sensor_id, last_seen) DO UPDATE SET temperature = EXCLUDED.temperature, humidity=EXCLUDED.humidity, velocity=EXCLUDED.velocity, battery_level=EXCLUDED.battery_level;"""
 
     ts.execute(query)
     ts.execute("commit")
