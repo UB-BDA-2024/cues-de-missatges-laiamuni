@@ -10,6 +10,7 @@ from shared.mongodb_client import MongoDBClient
 from shared.elasticsearch_client import ElasticsearchClient
 from shared.sensors.repository import DataCommand
 from shared.timescale import Timescale
+from shared.cassandra_client import CassandraClient
 from shared.sensors import repository, schemas
 
 
@@ -45,6 +46,22 @@ def get_mongodb_client():
         yield mongodb
     finally:
         mongodb.close()
+
+# Dependency to get elastic_search client
+def get_elastic_search():
+    es = ElasticsearchClient(host="elasticsearch")
+    try:
+        yield es
+    finally:
+        es.close()
+
+# Dependency to get cassandra client
+def get_cassandra_client():
+    cassandra = CassandraClient(hosts=["cassandra"])
+    try:
+        yield cassandra
+    finally:
+        cassandra.close()
 
 
 publisher = Publisher()
