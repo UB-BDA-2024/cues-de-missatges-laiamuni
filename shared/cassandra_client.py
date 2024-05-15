@@ -1,8 +1,11 @@
 from cassandra.cluster import Cluster
+from cassandra.policies import RoundRobinPolicy
 
 class CassandraClient:
     def __init__(self, hosts):
-        self.cluster = Cluster(hosts,protocol_version=4)
+        lbp = RoundRobinPolicy()
+
+        self.cluster = Cluster(hosts,protocol_version=4,load_balancing_policy=lbp)
         self.session = self.cluster.connect()
 
         self.session.execute("CREATE KEYSPACE IF NOT EXISTS sensor WITH REPLICATION = { 'class': 'SimpleStrategy', 'replication_factor': 1};")

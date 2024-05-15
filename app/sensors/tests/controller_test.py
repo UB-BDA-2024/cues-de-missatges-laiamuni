@@ -38,9 +38,6 @@ def clear_dbs():
             time.sleep(5)
 
 
-     
-
-
 #TODO ADD all your tests in test_*.py files:
 def test_redis_connection():
     redis_client = RedisClient(host="redis")

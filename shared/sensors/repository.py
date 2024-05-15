@@ -23,8 +23,9 @@ class DataCommand():
         self.bucket = bucket
 
 
-def get_sensor(db: Session, sensor_id: int) -> Optional[models.Sensor]:
-    return db.query(models.Sensor).filter(models.Sensor.id == sensor_id).first()
+def get_sensor(mongodb: MongoDBClient, sensor_id: int) -> Optional[models.Sensor]:
+    sensor = mongodb.get_sensor({"id": sensor_id})
+    return sensor
 
 def get_sensor_by_name(db: Session, name: str) -> Optional[models.Sensor]:
     return db.query(models.Sensor).filter(models.Sensor.name == name).first()
@@ -78,10 +79,6 @@ def delete_sensor(db: Session, sensor_id: int):
     db.delete(db_sensor)
     db.commit()
     return db_sensor
-
-def get_sensor(mongodb: MongoDBClient, sensor_id: int) -> Optional[models.Sensor]:
-    sensor = mongodb.get_sensor({"id": sensor_id})
-    return sensor
 
 def create_sensor(db: Session, sensor: schemas.SensorCreate, mongodb: MongoDBClient, elastic: ElasticsearchClient, cassandra: CassandraClient) -> Optional[models.Sensor]:
     db_sensor = models.Sensor(name=sensor.name)
