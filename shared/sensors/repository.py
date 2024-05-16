@@ -257,7 +257,7 @@ def get_sensor_near(mongodb: MongoDBClient, redis: RedisClient, latitude: float,
     documents = list(mongodb.getDocuments(query))
 
     for i in documents:
-        db_sensor = get_sensor(db=db, sensor_id=i['id'])
+        db_sensor = get_sensor(mongodb=mongodb, sensor_id=i['id'])
 
         db_sensor=get_data(redis=redis,sensor_id=db_sensor.id,data=db)
 
