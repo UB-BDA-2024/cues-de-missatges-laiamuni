@@ -316,3 +316,13 @@ def test_get_near():
     assert json[1]["velocity"] == 46.0
     assert json[1]["battery_level"] == 1.9
     assert json[1]["last_seen"] == "2020-01-01T00:00:01.000Z"
+
+#TEST DOCUMENTALS
+def test_delete_sensor_1():
+    response = client.delete("/sensors/1")
+    assert response.status_code == 200
+
+#TEST DOCUMENTALS
+def test_delete_sensor_2():
+    response = client.delete("/sensors/2")
+    assert response.status_code == 200
