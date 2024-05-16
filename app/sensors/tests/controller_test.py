@@ -312,7 +312,7 @@ def test_get_near():
     assert json[0]["battery_level"] == 1.9
     assert json[0]["last_seen"] == "2020-01-01T00:00:01.000Z"
     assert json[1]["id"] == 2
-    assert json[1]["name"] == "Sensor Velocitat 1"
+    assert json[1]["name"] == "Velocitat 1"
     assert json[1]["velocity"] == 46.0
     assert json[1]["battery_level"] == 1.9
     assert json[1]["last_seen"] == "2020-01-01T00:00:01.000Z"
