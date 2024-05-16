@@ -244,3 +244,47 @@ def test_post_sensor_data_veolicitat_week_2():
 def test_post_sensor_data_veolicitat_week_3():
     response = client.post("/sensors/3/data", json={"velocity": 18.0, "battery_level": 0.9, "last_seen": "2020-01-15T00:00:00.000Z"})
     assert response.status_code == 200
+
+#TEST TEMPORALS
+def test_get_sensor_data_1_day():
+    """We can get a sensor by its id"""
+    response = client.get("/sensors/1/data?from=2020-01-01T00:00:00.000Z&to=2020-01-03T00:00:00.000Z&bucket=day")
+    print(response.json())
+    assert response.status_code == 200
+    json = response.json()
+    assert len(json) == 3
+
+#TEST TEMPORALS
+def test_get_sensor_data_1_week():
+    response = client.get("/sensors/1/data?from=2020-01-01T00:00:00.000Z&to=2020-01-07T00:00:00.000Z&bucket=week")
+    assert response.status_code == 200
+    json = response.json()
+    assert len(json) == 1
+
+#TEST TEMPORALS
+def test_get_sensor_data_2_hour():
+    response = client.get("/sensors/2/data?from=2020-01-01T00:00:00.000Z&to=2020-01-01T02:00:00.000Z&bucket=hour")
+    assert response.status_code == 200
+    json = response.json()
+    assert len(json) == 3
+
+#TEST TEMPORALS
+def test_get_sensor_data_2_day():
+    response = client.get("/sensors/2/data?from=2020-01-01T00:00:00.000Z&to=2020-01-02T00:00:00.000Z&bucket=day")
+    assert response.status_code == 200
+    json = response.json()
+    assert len(json) == 1
+
+#TEST TEMPORALS
+def test_get_sensor_data_3_week():
+    response = client.get("/sensors/3/data?from=2020-01-01T00:00:00.000Z&to=2020-01-15T00:00:00.000Z&bucket=week")
+    assert response.status_code == 200
+    json = response.json()
+    assert len(json) == 3
+
+#TEST TEMPORALS
+def test_get_sensor_data_3_month():
+    response = client.get("/sensors/3/data?from=2020-01-01T00:00:00.000Z&to=2020-01-31T00:00:00.000Z&bucket=month")
+    assert response.status_code == 200
+    json = response.json()
+    assert len(json) == 1
