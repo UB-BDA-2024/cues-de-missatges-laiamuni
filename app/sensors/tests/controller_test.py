@@ -288,3 +288,13 @@ def test_get_sensor_data_3_month():
     assert response.status_code == 200
     json = response.json()
     assert len(json) == 1
+
+#TEST DOCUMENTALS
+def test_update_sensor_1_data():
+    response = client.post("/sensors/1/data", json={"temperature": 2.0, "humidity": 2.0, "battery_level": 1.9, "last_seen": "2020-01-01T00:00:01.000Z"})
+    assert response.status_code == 200
+
+#TEST DOCUMENTALS
+def test_update_sensor_2_data():
+    response = client.post("/sensors/2/data", json={"velocity": 46.0,"battery_level": 1.9, "last_seen": "2020-01-01T00:00:01.000Z"})
+    assert response.status_code == 200
