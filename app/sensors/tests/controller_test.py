@@ -40,7 +40,7 @@ def clear_dbs():
 
 #TODO ADD all your tests in test_*.py files:
 
-#TESTS INDEXOS EXTERNS
+#TEST INDEXOS EXTERNS
 def test_elasticsearch_client():
     """Elasticsearch client can be properly created"""
     es = ElasticsearchClient(host="elasticsearch")
@@ -85,62 +85,116 @@ def test_elasticsearch_client():
     es.clearIndex(es_index_name)
     es.close()
 
+#TEST COLUMNARS
 def test_create_sensor_temperatura_1():
     """A sensor can be properly created"""
     response = client.post("/sensors", json={"name": "Sensor Temperatura 1", "latitude": 1.0, "longitude": 1.0, "type": "Temperatura", "mac_address": "00:00:00:00:00:00", "manufacturer": "Dummy", "model":"Dummy Temp", "serie_number": "0000 0000 0000 0000", "firmware_version": "1.0", "description": "Sensor de temperatura model Dummy Temp del fabricant Dummy"})
     assert response.status_code == 200
     assert response.json() == {"id": 1, "name": "Sensor Temperatura 1", "latitude": 1.0, "longitude": 1.0, "type": "Temperatura", "mac_address": "00:00:00:00:00:00", "manufacturer": "Dummy", "model":"Dummy Temp", "serie_number": "0000 0000 0000 0000", "firmware_version": "1.0", "description": "Sensor de temperatura model Dummy Temp del fabricant Dummy"}
 
+#TEST COLUMNARS
 def test_create_sensor_velocitat_1():
     response = client.post("/sensors", json={"name": "Velocitat 1", "latitude": 1.0, "longitude": 1.0, "type": "Velocitat", "mac_address": "00:00:00:00:00:01", "manufacturer": "Dummy", "model":"Dummy Vel", "serie_number": "0000 0000 0000 0000", "firmware_version": "1.0", "description": "Sensor de velocitat model Dummy Vel del fabricant Dummy cruïlla 1"})
     assert response.status_code == 200
     assert response.json() == {"id": 2, "name": "Velocitat 1", "latitude": 1.0, "longitude": 1.0, "type": "Velocitat", "mac_address": "00:00:00:00:00:01", "manufacturer": "Dummy", "model":"Dummy Vel", "serie_number": "0000 0000 0000 0000", "firmware_version": "1.0", "description": "Sensor de velocitat model Dummy Vel del fabricant Dummy cruïlla 1"}
 
+#TEST COLUMNARS
 def test_create_sensor_velocitat_2():
     response = client.post("/sensors", json={"name": "Velocitat 2", "latitude": 2.0, "longitude": 2.0, "type": "Velocitat", "mac_address": "00:00:00:00:00:02", "manufacturer": "Dummy", "model":"Dummy Vel", "serie_number": "0000 0000 0000 0000", "firmware_version": "1.0", "description": "Sensor de velocitat model Dummy Vel del fabricant Dummy cruïlla 2"})
     assert response.status_code == 200
     assert response.json() == {"id": 3, "name": "Velocitat 2", "latitude": 2.0, "longitude": 2.0, "type": "Velocitat", "mac_address": "00:00:00:00:00:02", "manufacturer": "Dummy", "model":"Dummy Vel", "serie_number": "0000 0000 0000 0000", "firmware_version": "1.0", "description": "Sensor de velocitat model Dummy Vel del fabricant Dummy cruïlla 2"}
 
+#TEST INDEXOS EXTERNS
+def test_search_sensors_temperatura():
+    #time.sleep(5)
+    """Sensors can be properly searched by type"""
+    response = client.get('/sensors/search?query={"type":"Temperatura"}')
+    #print(response.json())
+    assert response.status_code == 200
+    assert response.json() == [{"id": 1, "name": "Sensor Temperatura 1", "latitude": 1.0, "longitude": 1.0, "type": "Temperatura", "mac_address": "00:00:00:00:00:00", "manufacturer": "Dummy", "model": "Dummy Temp", "serie_number": "0000 0000 0000 0000", "firmware_version": "1.0", "description": "Sensor de temperatura model Dummy Temp del fabricant Dummy"}]
+
+#TEST INDEXOS EXTERNS
+def test_search_sensors_name_similar():
+    """Sensors can be properly searched by name"""
+    response = client.get('/sensors/search?query={"name":"Velocidad 1"}&search_type=similar')
+    assert response.status_code == 200
+    assert response.json() == [{"id": 2, "name": "Velocitat 1", "latitude": 1.0, "longitude": 1.0, "type": "Velocitat", "mac_address": "00:00:00:00:00:01", "manufacturer": "Dummy", "model": "Dummy Vel", "serie_number": "0000 0000 0000 0000", "firmware_version": "1.0", "description": "Sensor de velocitat model Dummy Vel del fabricant Dummy cruïlla 1"}]
+
+#TEST INDEXOS EXTERNS
+def test_search_sensors_name_prefix():
+    """Sensors can be properly searched by name"""
+    response = client.get('/sensors/search?query={"name":"Veloci"}&search_type=prefix')
+    assert response.status_code == 200
+    assert response.json() == [
+        {"id": 2, "name": "Velocitat 1", "latitude": 1.0, "longitude": 1.0, "type": "Velocitat", "mac_address": "00:00:00:00:00:01", "manufacturer": "Dummy", "model": "Dummy Vel", "serie_number": "0000 0000 0000 0000", "firmware_version": "1.0", "description": "Sensor de velocitat model Dummy Vel del fabricant Dummy cruïlla 1"},
+        {"id": 3, "name": "Velocitat 2", "latitude": 2.0, "longitude": 2.0, "type": "Velocitat", "mac_address": "00:00:00:00:00:02", "manufacturer": "Dummy", "model": "Dummy Vel", "serie_number": "0000 0000 0000 0002", "firmware_version": "1.0", "description": "Sensor de velocitat model Dummy Vel del fabricant Dummy cruïlla 2"}]
+
+#TEST INDEXOS EXTERNS    
+def test_search_sensors_type_limit():
+    """Sensors can be properly searched by type"""
+    response = client.get('/sensors/search?query={"type":"Velocitat"}&size=1')
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+
+#TEST INDEXOS EXTERNS
+def test_search_sensors_description_similar():
+    """Sensors can be properly searched by description"""
+    response = client.get('/sensors/search?query={"description":"dummy"}&search_type=similar')
+    assert response.status_code == 200
+    assert response.json() == [{"id": 1, "name": "Sensor Temperatura 1", "latitude": 1.0, "longitude": 1.0, "type": "Temperatura", "mac_address": "00:00:00:00:00:00", "manufacturer": "Dummy", "model": "Dummy Temp", "serie_number": "0000 0000 0000 0000", "firmware_version": "1.0", "description": "Sensor de temperatura model Dummy Temp del fabricant Dummy"},
+        {"id": 2, "name": "Velocitat 1", "latitude": 1.0, "longitude": 1.0, "type": "Velocitat", "mac_address": "00:00:00:00:00:01", "manufacturer": "Dummy", "model": "Dummy Vel", "serie_number": "0000 0000 0000 0000", "firmware_version": "1.0", "description": "Sensor de velocitat model Dummy Vel del fabricant Dummy cruïlla 1"},
+        {"id": 3, "name": "Velocitat 2", "latitude": 2.0, "longitude": 2.0, "type": "Velocitat", "mac_address": "00:00:00:00:00:02", "manufacturer": "Dummy", "model": "Dummy Vel", "serie_number": "0000 0000 0000 0002", "firmware_version": "1.0", "description": "Sensor de velocitat model Dummy Vel del fabricant Dummy cruïlla 2"}]  
+
+#TEST COLUMNARS
 def test_create_sensor_temperatura_2():
     """A sensor can be properly created"""
     response = client.post("/sensors", json={"name": "Sensor Temperatura 2", "latitude": 2.0, "longitude": 2.0, "type": "Temperatura", "mac_address": "00:00:00:00:00:03", "manufacturer": "Dummy", "model":"Dummy Temp", "serie_number": "0000 0000 0000 0000", "firmware_version": "1.0", "description": "Sensor de temperatura model Dummy Temp del fabricant Dummy"})
     assert response.status_code == 200
     assert response.json() == {"id": 4, "name": "Sensor Temperatura 2", "latitude": 2.0, "longitude": 2.0, "type": "Temperatura", "mac_address": "00:00:00:00:00:03", "manufacturer": "Dummy", "model":"Dummy Temp", "serie_number": "0000 0000 0000 0000", "firmware_version": "1.0", "description": "Sensor de temperatura model Dummy Temp del fabricant Dummy"}
 
+#TEST COLUMNARS
 def test_post_sensor_data_temperatura_1():
     response = client.post("/sensors/1/data", json={"temperature": 1.0, "humidity": 1.0, "battery_level": 1.0, "last_seen": "2020-01-01T00:00:00.000Z"})
     assert response.status_code == 200
 
+#TEST COLUMNARS
 def test_post_sensor_data_temperatura_2():
     response = client.post("/sensors/1/data", json={"temperature": 4.0, "humidity": 1.0, "battery_level": 1.0, "last_seen": "2020-01-01T00:00:00.000Z"})
     assert response.status_code == 200
 
+#TEST COLUMNARS
 def test_post_sensor_data_temperatura_3():
     response = client.post("/sensors/4/data", json={"temperature": 15.0, "humidity": 1.0, "battery_level": 1.0, "last_seen": "2020-01-02T00:00:00.000Z"})
     assert response.status_code == 200
 
+#TEST COLUMNARS
 def test_post_sensor_data_temperatura_4():
     response = client.post("/sensors/4/data", json={"temperature": 17.0, "humidity": 1.0, "battery_level": 1.0, "last_seen": "2020-01-02T00:00:00.000Z"})
     assert response.status_code == 200
 
+#TEST COLUMNARS
 def test_post_sensor_data_veolicitat_1():
     response = client.post("/sensors/2/data", json={"velocity": 1.0, "battery_level": 0.1, "last_seen": "2020-01-01T00:00:00.000Z"})
     assert response.status_code == 200
 
+#TEST COLUMNARS
 def test_post_sensor_data_veolicitat_2():
     response = client.post("/sensors/3/data", json={"velocity": 15.0, "battery_level": 0.15, "last_seen": "2020-01-01T01:00:00.000Z"})
     assert response.status_code == 200
 
+#TEST COLUMNARS
 def test_get_values_sensor_temperatura():
     response = client.get("/sensors/temperature/values")
     assert response.status_code == 200
     assert response.json() == {"sensors": [{"id": 1, "name": "Sensor Temperatura 1", "latitude": 1.0, "longitude": 1.0, "type": "Temperatura", "mac_address": "00:00:00:00:00:00", "manufacturer": "Dummy", "model": "Dummy Temp", "serie_number": "0000 0000 0000 0000", "firmware_version": "1.0", "description": "Sensor de temperatura model Dummy Temp del fabricant Dummy", "values": {"max_temperature": 4.0, "min_temperature": 1.0, "average_temperature": 2.5}}, {"id": 4, "name": "Sensor Temperatura 2", "latitude": 2.0, "longitude": 2.0, "type": "Temperatura", "mac_address": "00:00:00:00:00:03", "manufacturer": "Dummy", "model": "Dummy Temp", "serie_number": "0000 0000 0000 0000", "firmware_version": "1.0", "description": "Sensor de temperatura model Dummy Temp del fabricant Dummy", "values": {"max_temperature": 17.0, "min_temperature": 15.0, "average_temperature": 16.0}}]}
 
+#TEST COLUMNARS
 def test_get_sensors_quantity():
     response = client.get("/sensors/quantity_by_type")
     assert response.status_code == 200
     assert response.json() == {"sensors": [{"type":"Temperatura", "quantity": 2}, {"type":"Velocitat", "quantity": 2}]}
 
+#TEST COLUMNARS
 def test_get_sensors_low_battery():
     response = client.get("/sensors/low_battery")
     assert response.status_code == 200
