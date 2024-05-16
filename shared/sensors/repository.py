@@ -189,7 +189,7 @@ def delete_sensor(db: Session, sensor_id: int, mongodb: MongoDBClient, redis: Re
 
     redis.delete(sensor_id)
 
-    query = "DELETE FROM sensor_data WHERE sensor_id == " + str(sensor_id)
+    query = "DELETE FROM sensor_data WHERE sensor_id = " + str(sensor_id)
     ts.execute(query)
     return db_sensor
 
