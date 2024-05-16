@@ -200,3 +200,47 @@ def test_get_sensors_low_battery():
     assert response.status_code == 200
     assert response.json() == {"sensors": [{"id": 2, "name": "Velocitat 1", "latitude": 1.0, "longitude": 1.0, "type": "Velocitat", "mac_address": "00:00:00:00:00:01", "manufacturer": "Dummy", "model":"Dummy Vel", "serie_number": "0000 0000 0000 0000", "firmware_version": "1.0", "description": "Sensor de velocitat model Dummy Vel del fabricant Dummy cruïlla 1", "battery_level": 0.1}, {"id": 3, "name": "Velocitat 2", "latitude": 2.0, "longitude": 2.0, "type": "Velocitat", "mac_address": "00:00:00:00:00:02", "manufacturer": "Dummy", "model":"Dummy Vel", "serie_number": "0000 0000 0000 0000", "firmware_version": "1.0", "description": "Sensor de velocitat model Dummy Vel del fabricant Dummy cruïlla 2", "battery_level": 0.15}]}
 
+#TEST TEMPORALS
+def test_post_sensor_data_dia_1():
+    response = client.post("/sensors/1/data", json={"temperature": 1.0, "humidity": 1.0, "battery_level": 1.0, "last_seen": "2020-01-01T00:00:00.000Z"})
+    assert response.status_code == 200
+
+#TEST TEMPORALS
+def test_post_sensor_data_dia_2():
+    response = client.post("/sensors/1/data", json={"temperature": 15.0, "humidity": 1.0, "battery_level": 1.0, "last_seen": "2020-01-02T00:00:00.000Z"})
+    assert response.status_code == 200
+
+#TEST TEMPORALS
+def test_post_sensor_data_dia_3():
+    response = client.post("/sensors/1/data", json={"temperature": 18.0, "humidity": 1.0, "battery_level": 0.9, "last_seen": "2020-01-03T00:00:00.000Z"})
+    assert response.status_code == 200
+
+#TEST TEMPORALS
+def test_post_sensor_data_veolicitat_hora_1():
+    response = client.post("/sensors/2/data", json={"velocity": 1.0, "battery_level": 1.0, "last_seen": "2020-01-01T00:00:00.000Z"})
+    assert response.status_code == 200
+
+#TEST TEMPORALS
+def test_post_sensor_data_veolicitat_hora_2():
+    response = client.post("/sensors/2/data", json={"velocity": 15.0, "battery_level": 1.0, "last_seen": "2020-01-01T01:00:00.000Z"})
+    assert response.status_code == 200
+
+#TEST TEMPORALS
+def test_post_sensor_data_veolicitat_hora_3():
+    response = client.post("/sensors/2/data", json={"velocity": 18.0, "battery_level": 0.9, "last_seen": "2020-01-01T02:00:00.000Z"})
+    assert response.status_code == 200
+
+#TEST TEMPORALS
+def test_post_sensor_data_veolicitat_week_1():
+    response = client.post("/sensors/3/data", json={"velocity": 1.0, "battery_level": 1.0, "last_seen": "2020-01-01T00:00:00.000Z"})
+    assert response.status_code == 200
+
+#TEST TEMPORALS
+def test_post_sensor_data_veolicitat_week_2():
+    response = client.post("/sensors/3/data", json={"velocity": 15.0, "battery_level": 1.0, "last_seen": "2020-01-08T00:00:00.000Z"})
+    assert response.status_code == 200
+
+#TEST TEMPORALS
+def test_post_sensor_data_veolicitat_week_3():
+    response = client.post("/sensors/3/data", json={"velocity": 18.0, "battery_level": 0.9, "last_seen": "2020-01-15T00:00:00.000Z"})
+    assert response.status_code == 200
