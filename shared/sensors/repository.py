@@ -252,12 +252,15 @@ def search_sensors(db: Session,mongodb: MongoDBClient, elastic: ElasticsearchCli
             break
     return search
 
+def get_sensor2(db: Session, sensor_id: int) -> Optional[models.Sensor]:
+    return db.query(models.Sensor).filter(models.Sensor.id == sensor_id).first()
+
 def get_sensor_near(mongodb: MongoDBClient, redis: RedisClient, latitude: float, longitude: float, radius: float, db:Session)->List:
     query = {"latitude":{"$gte":latitude - radius,"$lte":latitude + radius}, "longitude":{"$gte": longitude-radius, "$lte":longitude+radius}}
     documents = list(mongodb.getDocuments(query))
 
     for i in documents:
-        db_sensor = get_sensor(mongodb=mongodb, sensor_id=i['id'])
+        db_sensor = get_sensor2(db=db, sensor_id=i['id'])
 
         db_sensor=get_data(redis=redis,sensor_id=db_sensor.id,data=db)
 
