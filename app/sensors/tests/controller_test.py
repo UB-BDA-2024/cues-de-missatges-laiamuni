@@ -40,6 +40,18 @@ def clear_dbs():
 
 #TODO ADD all your tests in test_*.py files:
 
+#TEST CLAU-VALOR
+def test_redis_connection():
+    redis_client = RedisClient(host="redis")
+    assert redis_client.ping()
+    redis_client.close()
+
+#TEST DOCUMENTALS
+def test_mongodb_connection():
+    mongodb_client = MongoDBClient(host="mongodb")
+    assert mongodb_client.ping()
+    mongodb_client.close()
+
 #TEST INDEXOS EXTERNS
 def test_elasticsearch_client():
     """Elasticsearch client can be properly created"""
@@ -91,6 +103,18 @@ def test_create_sensor_temperatura_1():
     response = client.post("/sensors", json={"name": "Sensor Temperatura 1", "latitude": 1.0, "longitude": 1.0, "type": "Temperatura", "mac_address": "00:00:00:00:00:00", "manufacturer": "Dummy", "model":"Dummy Temp", "serie_number": "0000 0000 0000 0000", "firmware_version": "1.0", "description": "Sensor de temperatura model Dummy Temp del fabricant Dummy"})
     assert response.status_code == 200
     assert response.json() == {"id": 1, "name": "Sensor Temperatura 1", "latitude": 1.0, "longitude": 1.0, "type": "Temperatura", "mac_address": "00:00:00:00:00:00", "manufacturer": "Dummy", "model":"Dummy Temp", "serie_number": "0000 0000 0000 0000", "firmware_version": "1.0", "description": "Sensor de temperatura model Dummy Temp del fabricant Dummy"}
+
+#TEST CLAU-VALOR
+def test_post_sensor_data_not_exists():
+    response = client.post("/sensors/2/data", json={"temperature": 1.0, "humidity": 1.0, "battery_level": 1.0, "last_seen": "2020-01-01T00:00:00.000Z"})
+    assert response.status_code == 404
+    assert "Sensor not found" in response.text
+
+#TEST CLAU-VALOR
+def test_get_sensor_data_not_exists():
+    response = client.get("/sensors/2/data")
+    assert response.status_code == 404
+    assert "Sensor not found" in response.text
 
 #TEST COLUMNARS
 def test_create_sensor_velocitat_1():
