@@ -185,7 +185,7 @@ def delete_sensor(db: Session, sensor_id: int, mongodb: MongoDBClient, redis: Re
     db.commit()
 
     query_delete = {"id": sensor_id}
-    mongodb.delete_sensor(query_delete)
+    mongodb.delete(query_delete)
 
     redis.delete(sensor_id)
 
