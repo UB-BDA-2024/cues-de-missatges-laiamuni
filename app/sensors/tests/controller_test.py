@@ -106,7 +106,7 @@ def test_create_sensor_velocitat_2():
 
 #TEST INDEXOS EXTERNS
 def test_search_sensors_temperatura():
-    #time.sleep(5)
+    time.sleep(5)
     """Sensors can be properly searched by type"""
     response = client.get('/sensors/search?query={"type":"Temperatura"}')
     #print(response.json())
