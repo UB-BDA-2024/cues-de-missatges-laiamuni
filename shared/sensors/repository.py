@@ -252,16 +252,16 @@ def search_sensors(db: Session,mongodb: MongoDBClient, elastic: ElasticsearchCli
             break
     return search
 
-def get_sensor2(db: Session, sensor_id: int) -> Optional[models.Sensor]:
+def get_sensor_documentals(db: Session, sensor_id: int) -> Optional[models.Sensor]:
     return db.query(models.Sensor).filter(models.Sensor.id == sensor_id).first()
 
-def get_data2(redis: RedisClient, sensor_id: int, data: Session) -> dict:
+def get_data_documentals(redis: RedisClient, sensor_id: int, db: Session) -> dict:
     db_sensor = redis.get(sensor_id)
 
     if db_sensor:
         sensor_data = db_sensor
         sensor_data["id"] = sensor_id
-        sensor_data["name"] = data.query(models.Sensor).filter(models.Sensor.id == sensor_id).first().name
+        sensor_data["name"] = db.query(models.Sensor).filter(models.Sensor.id == sensor_id).first().name
 
         return sensor_data
 
@@ -270,9 +270,9 @@ def get_sensor_near(mongodb: MongoDBClient, redis: RedisClient, latitude: float,
     documents = list(mongodb.getDocuments(query))
 
     for i in documents:
-        db_sensor = get_sensor2(db=db, sensor_id=i['id'])
+        db_sensor = get_sensor_documentals(db=db, sensor_id=i['id'])
 
-        db_sensor=get_data(redis=redis,sensor_id=db_sensor.id,data=db)
+        db_sensor=get_data_documentals(redis=redis,sensor_id=db_sensor.id,db=db)
 
         i['velocity']=db_sensor['velocity']
         i['temperature']=db_sensor['temperature']
