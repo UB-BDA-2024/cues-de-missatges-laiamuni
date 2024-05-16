@@ -2,6 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
+import json
 
 from shared.mongodb_client import MongoDBClient
 from shared.redis_client import RedisClient
@@ -225,3 +226,28 @@ def get_low_battery_sensors(mongodb: MongoDBClient, cassandra: CassandraClient):
         sensors.append(data_sensor)
 
     return {"sensors": sensors}
+
+def search_sensors(db: Session,mongodb: MongoDBClient, elastic: ElasticsearchClient, query: str, size: int, search_type: str):
+    search = list()
+    query2 = json.loads(query)
+
+    if search_type == "similar":
+        search_type = "fuzzy"
+
+    query_search = {
+        "query":{
+            search_type: query2
+        }
+    }
+
+    results = elastic.search(index_name="sensors", query=query_search)
+
+    for hit in results['hits']['hits']:
+        name = hit["_source"]["name"]
+        sensor = mongodb.get_sensor({"name": name})
+
+        search.append(sensor)
+
+        if len(search) == size:
+            break
+    return search

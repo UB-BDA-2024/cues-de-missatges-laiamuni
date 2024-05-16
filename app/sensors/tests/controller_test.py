@@ -40,6 +40,51 @@ def clear_dbs():
 
 #TODO ADD all your tests in test_*.py files:
 
+#TESTS INDEXOS EXTERNS
+def test_elasticsearch_client():
+    """Elasticsearch client can be properly created"""
+    es = ElasticsearchClient(host="elasticsearch")
+    assert es.ping()
+    # Create the index
+    es_index_name='my_index'
+    es.create_index(es_index_name)
+    # Define the mapping for the index
+    mapping = {
+        'properties': {
+            'title': {'type': 'text'},
+            'description': {'type': 'text'},
+            'price': {'type': 'float'}
+        }
+    }
+    es.create_mapping('my_index',mapping)
+    es_doc={
+        'title': 'Test document',
+        'description': 'This is a test document',
+        'price': 10.0
+    }
+    es.index_document(es_index_name, es_doc)
+    # Define the search query
+    query = {
+        'query': {
+            'match': {
+                'title': 'Test document'
+            }
+        }
+    }
+    # Perform the search and get the results
+    results = es.search(es_index_name, query)
+
+    # Loop through the results and print the title and price of each document
+    for hit in results['hits']['hits']:
+        print(f"Title: {hit['_source']['title']}")
+        print(f"Price: {hit['_source']['price']}")
+        assert hit['_source']['title'] == 'Test document'
+        assert hit['_source']['price'] == 10.0
+    
+    # Delete the index
+    es.clearIndex(es_index_name)
+    es.close()
+
 def test_create_sensor_temperatura_1():
     """A sensor can be properly created"""
     response = client.post("/sensors", json={"name": "Sensor Temperatura 1", "latitude": 1.0, "longitude": 1.0, "type": "Temperatura", "mac_address": "00:00:00:00:00:00", "manufacturer": "Dummy", "model":"Dummy Temp", "serie_number": "0000 0000 0000 0000", "firmware_version": "1.0", "description": "Sensor de temperatura model Dummy Temp del fabricant Dummy"})

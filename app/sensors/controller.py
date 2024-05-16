@@ -88,10 +88,9 @@ def get_sensors_near(latitude: float, longitude: float, db: Session = Depends(ge
 # - db: database session
 # - mongodb_client: mongodb client
 @router.get("/search")
-def search_sensors(query: str, size: int = 10, search_type: str = "match", db: Session = Depends(get_db), mongodb_client: MongoDBClient = Depends(get_mongodb_client)):
-    #Add your search call to the repository here
-    #return repository.search_sensors(db=db, mongodb=mongodb_client, query=query, size=size, search_type=search_type)
-    return []
+def search_sensors(query: str, size: int = 10, search_type: str = "match", db: Session = Depends(get_db), mongodb_client: MongoDBClient = Depends(get_mongodb_client), es: ElasticsearchClient = Depends(get_elastic_search)):
+    return repository.search_sensors(db=db,mongodb=mongodb_client, elastic=es, query=query, size=size, search_type=search_type)
+
 
 @router.get("/temperature/values")
 def get_temperature_values(mongodb: Session = Depends(get_mongodb_client), cassandra_client: CassandraClient = Depends(get_cassandra_client)):
