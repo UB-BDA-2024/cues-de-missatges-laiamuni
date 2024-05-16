@@ -298,3 +298,21 @@ def test_update_sensor_1_data():
 def test_update_sensor_2_data():
     response = client.post("/sensors/2/data", json={"velocity": 46.0,"battery_level": 1.9, "last_seen": "2020-01-01T00:00:01.000Z"})
     assert response.status_code == 200
+
+#TEST DOCUMENTALS
+def test_get_near():
+    response = client.get("/sensors/near?latitude=1.0&longitude=1.0&radius=1")
+    assert response.status_code == 200
+    json = response.json()
+    print("Document: ", json)
+    assert json[0]["id"] == 1
+    assert json[0]["name"] == "Sensor Temperatura 1"
+    assert json[0]["temperature"] == 2.0
+    assert json[0]["humidity"] == 2.0
+    assert json[0]["battery_level"] == 1.9
+    assert json[0]["last_seen"] == "2020-01-01T00:00:01.000Z"
+    assert json[1]["id"] == 2
+    assert json[1]["name"] == "Sensor Velocitat 1"
+    assert json[1]["velocity"] == 46.0
+    assert json[1]["battery_level"] == 1.9
+    assert json[1]["last_seen"] == "2020-01-01T00:00:01.000Z"
