@@ -29,10 +29,11 @@ class SensorCreate(BaseModel):
     model: str
     serie_number: str
     firmware_version: str
+    description: str
 
 class SensorData(BaseModel):
-    velocity: float
-    temperature: float
-    humidity: float
+    velocity: float = None
+    temperature: float = None
+    humidity: float = None
     battery_level: float
     last_seen: str
